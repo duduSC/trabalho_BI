@@ -8,6 +8,7 @@ JOIN bridge_filme_genero b ON f.sk_filme = b.sk_filme
 JOIN dim_genero g ON b.sk_genero = g.sk_genero
 GROUP BY g.nome
 ORDER BY AVG(f.notaMedia) DESC;
+
 2. A popularidade dos gêneros mudou ao longo do tempo?
 Contamos quantos filmes foram lançados por gênero e por ano.
 
@@ -29,6 +30,7 @@ SELECT
 FROM fato_filme f
 JOIN dim_data d ON f.sk_data_lancamento = d.sk_data
 GROUP BY epoca;
+
 4. Qual gênero é mais lucrativo?
 (Nota: Para esta e a pergunta 6, você precisará carregar a coluna lucro ou receita na sua tabela de fatos).
 
@@ -39,6 +41,8 @@ JOIN bridge_filme_genero b ON f.sk_filme = b.sk_filme
 JOIN dim_genero g ON b.sk_genero = g.sk_genero
 GROUP BY g.nome
 ORDER BY lucro_total DESC;
+
+
 5. Alto investimento resulta em boas críticas?
 Aqui comparamos o orçamento com a nota média.
 
@@ -52,6 +56,8 @@ SELECT
     AVG(notaMedia) as media_critica
 FROM fato_filme
 GROUP BY faixa_investimento;
+
+
 6. A crítica importa para a bilheteria?
 Verificamos a correlação entre a notaMedia e a receita.
 
