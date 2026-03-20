@@ -1,18 +1,19 @@
-1. Entre os gêneros mais lucrativos, qual é o preferido do público?
-Aqui filtramos os gêneros com maior lucro total (assumindo que você tenha a coluna lucro na fato) e ordenamos pela notaMedia.
+## 1. Entre os gêneros mais lucrativos, qual é o preferido do público?
+(Aqui eu filtro por lucro total e ordeno por nota média)
 
-SQL
+```SQL
 SELECT g.nome, AVG(f.notaMedia) as media_nota
 FROM fato_filme f
 JOIN bridge_filme_genero b ON f.sk_filme = b.sk_filme
 JOIN dim_genero g ON b.sk_genero = g.sk_genero
 GROUP BY g.nome
 ORDER BY AVG(f.notaMedia) DESC;
+```
 
-2. A popularidade dos gêneros mudou ao longo do tempo?
+## 2. A popularidade dos gêneros mudou ao longo do tempo?
 Contamos quantos filmes foram lançados por gênero e por ano.
 
-SQL
+```SQL
 SELECT d.ano, g.nome, COUNT(f.sk_filme) as total_filmes
 FROM fato_filme f
 JOIN dim_data d ON f.sk_data_lancamento = d.sk_data
@@ -20,33 +21,35 @@ JOIN bridge_filme_genero b ON f.sk_filme = b.sk_filme
 JOIN dim_genero g ON b.sk_genero = g.sk_genero
 GROUP BY d.ano, g.nome
 ORDER BY d.ano DESC, total_filmes DESC;
-3. Os clássicos são mais bem avaliados do que filmes mais recentes?
-Agrupamos por "época" usando o ano da dim_data.
+```
 
-SQL
+## 3. Os clássicos são mais bem avaliados do que filmes mais recentes?
+Usando a coluna ano como agrupador.
+
+```SQL
 SELECT 
     CASE WHEN d.ano < 1980 THEN 'Clássico' ELSE 'Moderno' END as epoca,
     AVG(f.notaMedia) as nota_media
 FROM fato_filme f
 JOIN dim_data d ON f.sk_data_lancamento = d.sk_data
 GROUP BY epoca;
+```
 
-4. Qual gênero é mais lucrativo?
-(Nota: Para esta e a pergunta 6, você precisará carregar a coluna lucro ou receita na sua tabela de fatos).
+## 4. Qual gênero é mais lucrativo?
 
-SQL
+```SQL
 SELECT g.nome, SUM(f.receita - f.orcamento) as lucro_total
 FROM fato_filme f
 JOIN bridge_filme_genero b ON f.sk_filme = b.sk_filme
 JOIN dim_genero g ON b.sk_genero = g.sk_genero
 GROUP BY g.nome
 ORDER BY lucro_total DESC;
+```
 
+## 5. Alto investimento resulta em boas críticas?
+Aqui comparo o orçamento com a nota média.
 
-5. Alto investimento resulta em boas críticas?
-Aqui comparamos o orçamento com a nota média.
-
-SQL
+```SQL
 SELECT 
     CASE 
         WHEN orcamento > 100000000 THEN 'Blockbuster (100M+)'
@@ -56,12 +59,12 @@ SELECT
     AVG(notaMedia) as media_critica
 FROM fato_filme
 GROUP BY faixa_investimento;
+```
 
+## 6. A crítica importa para a bilheteria?
+Verifico a correlação entre a nota Media e a receita.
 
-6. A crítica importa para a bilheteria?
-Verificamos a correlação entre a notaMedia e a receita.
-
-SQL
+```SQL
 SELECT notaMedia, AVG(receita) as media_faturamento
 FROM fato_filme
 GROUP BY notaMedia
