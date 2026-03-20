@@ -1,5 +1,5 @@
 ## 1. Entre os gêneros mais lucrativos, qual é o preferido do público?
-(Aqui eu filtro por lucro total e ordeno por nota média)
+Aqui eu filtro por lucro total e ordeno por nota média
 
 ```SQL
 SELECT g.nome, AVG(f.notaMedia) as media_nota
@@ -11,7 +11,7 @@ ORDER BY AVG(f.notaMedia) DESC;
 ```
 
 ## 2. A popularidade dos gêneros mudou ao longo do tempo?
-Contamos quantos filmes foram lançados por gênero e por ano.
+Quantos filmes foram lançados por gênero e por ano.
 
 ```SQL
 SELECT d.ano, g.nome, COUNT(f.sk_filme) as total_filmes
