@@ -1,4 +1,5 @@
 -- 1. Tabela de Dimensão: Filme
+drop table if exists dim_filme cascade;
 CREATE TABLE dim_filme (
     sk_filme SERIAL PRIMARY KEY, -- Chave surrogate (gerada automaticamente)
     idImdb VARCHAR(20) NOT NULL UNIQUE, -- ID original (ex: tt0000009)
@@ -8,12 +9,14 @@ CREATE TABLE dim_filme (
 );
 
 -- 2. Tabela de Dimensão: Gênero
+drop table if exists dim_genero cascade;
 CREATE TABLE dim_genero (
     sk_genero SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL UNIQUE
 );
 
 -- 3. Tabela de Dimensão: Data (Simplificada para o seu caso)
+drop table if exists dim_data cascade;
 CREATE TABLE dim_data (
     sk_data INTEGER PRIMARY KEY, -- Formato YYYYMMDD
     ano INTEGER NOT NULL,
@@ -23,6 +26,7 @@ CREATE TABLE dim_data (
 
 -- 4. Tabela de Fatos: Filme
 -- Esta tabela guarda as métricas e chaves para as dimensões
+drop table if exists fato_filme cascade;
 CREATE TABLE fato_filme (
     sk_filme INTEGER NOT NULL,
     sk_data_lancamento INTEGER,
@@ -35,6 +39,7 @@ CREATE TABLE fato_filme (
 
 -- 5. Tabela Bridge: Filme e Gênero (Muitos para Muitos)
 -- É aqui que o seu "explode" do Pandas vai morar!
+drop table if exists bridge_filme_genero cascade;
 CREATE TABLE bridge_filme_genero (
     sk_filme INTEGER NOT NULL,
     sk_genero INTEGER NOT NULL,

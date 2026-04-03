@@ -11,24 +11,32 @@ load_dotenv()
 API_KEY = os.getenv("API_KEY")
 DB_SENHA= os.getenv("DB_SENHA")
 base_url = "https://api.themoviedb.org/3"
-db = create_engine(f'postgresql://postgres:{DB_SENHA}@localhost:5432/DataWarehouse_Filmes')
+db = create_engine(f'postgresql://eduar:{DB_SENHA}@localhost:5432/DW_Filmes')
 # Para limitar o número de conexões em 20
 sem = asyncio.Semaphore(20)
 
 
-def transforma_dim_datas(df:pd.DataFrame):
-    dim_datas = pd.to_datetime(df["data"])
-    dim_datas = pd.DataFrame(dim_datas)
-    dim_datas = dim_datas.assign(
-        ano= (dim_datas["data"].dt.year).astype("str"),
-        mes=(dim_datas["data"].dt.month).astype("str"),
-        dia=( dim_datas["data"].dt.day).astype("str"),
-        semestre= np.where(dim_datas["data"].dt.quarter>2,"1","2"),
-        dia_da_semana= (dim_datas["data"].dt.day_of_week).astype("str")
+def transforma_dim_data(df:pd.DataFrame):
+   
+    dim_data = pd.to_datetime(df["data"])
+    dim_data = pd.DataFrame(dim_data)
+
+    dim_data = dim_data.assign(
+        ano= (dim_data["data"].dt.year).astype("str"),
+        mes=(dim_data["data"].dt.month).astype("str"),
+        dia=( dim_data["data"].dt.day).astype("str"),
+        semestre= np.where(dim_data["data"].dt.quarter>2,"1","2"),
+        dia_da_semana= (dim_data["data"].dt.day_of_week).astype("str")
     )
-    dim_datas["data"]= dim_datas["data"].astype("str")
-    dim_datas = dim_datas.rename(columns={"data":"sk_data"})
-    return dim_datas
+
+
+
+    
+    dim_data["data"]= dim_data["data"].astype("str")
+    dim_data = dim_data.rename(columns={"data":"sk_data"})
+
+    return dim_data
+
 async def busca_data_completa(client, id_imdb):
     async with sem: # Ocupa um "guichê"
         full_url = f"{base_url}/find/{id_imdb}?api_key={API_KEY}&external_source=imdb_id"
@@ -72,8 +80,9 @@ async def main():
     if final_results:
         df_resultados = pd.DataFrame(final_results)
         print(f"\nSucesso! {len(df_resultados)} filmes encontrados.")
-        dim_datas= transforma_dim_datas(df_resultados)
-        dim_datas.to_sql('dim_datas', db, if_exists='replace', index=False)
+        dim_data= transforma_dim_data(df_resultados)
+        dim_data["sk_data"] = dim_data["sk_data"].str.replace("-","").astype("int")
+        dim_data.to_sql('dim_data', db, if_exists='delete_rows', index=False)
 
     else:
         print("\nNenhum dado foi coletado.")
