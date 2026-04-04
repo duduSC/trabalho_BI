@@ -2,10 +2,9 @@
 drop table if exists dim_filme cascade;
 CREATE TABLE dim_filme (
     sk_filme SERIAL PRIMARY KEY, -- Chave surrogate (gerada automaticamente)
-    idImdb VARCHAR(20) NOT NULL UNIQUE, -- ID original (ex: tt0000009)
-    tituloPrincipal VARCHAR(255) NOT NULL,
-    tituloOriginal VARCHAR(255),
-    tempoMinutos INTEGER
+    id_imdb VARCHAR(20) NOT NULL UNIQUE, -- ID original (ex: tt0000009)
+    titulo_principal VARCHAR(255) NOT NULL,
+    titulo_original VARCHAR(255)
 );
 
 -- 2. Tabela de Dimensão: Gênero
@@ -21,7 +20,9 @@ CREATE TABLE dim_data (
     sk_data INTEGER PRIMARY KEY, -- Formato YYYYMMDD
     ano INTEGER NOT NULL,
     mes INTEGER NOT NULL,
-    dia INTEGER NOT NULL
+    dia INTEGER NOT NULL,
+	semestre INTEGER NOT NULL,
+	dia_da_semana INTEGER NOT NULL
 );
 
 -- 4. Tabela de Fatos: Filme
@@ -30,9 +31,9 @@ drop table if exists fato_filme cascade;
 CREATE TABLE fato_filme (
     sk_filme INTEGER NOT NULL,
     sk_data_lancamento INTEGER,
-    notaMedia FLOAT DEFAULT 0,
-    numeroVotos INTEGER DEFAULT 0,
-    
+    nota_media FLOAT DEFAULT 0,
+    numero_votos INTEGER DEFAULT 0,
+    tempo_minutos INTEGER DEFAULT 0,
     CONSTRAINT fk_fato_filme FOREIGN KEY (sk_filme) REFERENCES dim_filme (sk_filme),
     CONSTRAINT fk_fato_data FOREIGN KEY (sk_data_lancamento) REFERENCES dim_data (sk_data)
 );
@@ -48,3 +49,5 @@ CREATE TABLE bridge_filme_genero (
     CONSTRAINT fk_bridge_filme FOREIGN KEY (sk_filme) REFERENCES dim_filme (sk_filme),
     CONSTRAINT fk_bridge_genero FOREIGN KEY (sk_genero) REFERENCES dim_genero (sk_genero)
 );
+
+
