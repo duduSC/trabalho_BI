@@ -13,9 +13,11 @@ DB_SENHA= os.getenv("DB_SENHA")
 base_url = "https://api.themoviedb.org/3"
 db = create_engine(f'postgresql://eduar:{DB_SENHA}@localhost:5432/DW_Filmes')
 # Para limitar o número de conexões em 20
-sem = asyncio.Semaphore(20)
+sem = asyncio.Semaphore(40)
 lista_ids_datas = dict()
 valores_com_erro = []
+lista_id_certo = []
+
 def transforma_dim_data(df:pd.DataFrame):
    
     df_limpo = df.copy()
@@ -51,9 +53,26 @@ async def busca_data_completa(client, id_imdb):
                 results = dados.get("movie_results")
                 if results:
                     lista_ids_datas[id_imdb]= results[0].get("release_date")
+                    lista_id_certo.append(results[0].get("id"))
                     return {"data": results[0].get("release_date")}
             return None
         except Exception:
+            return None
+        
+async def busca_receita_e_orcamento(client:httpx.AsyncClient,id_certo):
+    async with sem:
+        full_url = f"{base_url}/movie/{id_certo}?api_key={API_KEY}"
+        try:
+            resp = await client.get(full_url,timeout=10.0)
+            if resp.status_code == 200:
+                dados = resp.json()
+                orcamento = dados.get("budget")
+                receita = dados.get("revenue")
+                id_imdb= dados.get("imdb_id")
+                return {"id_imdb":id_imdb, "orcamento":orcamento, "receita":receita}
+            return None
+        except Exception as error:
+            print(f"Erro: {error}")
             return None
 def exclui_tabelas_aux(*tabelas,db):
 
@@ -66,10 +85,11 @@ def exclui_tabelas_aux(*tabelas,db):
 async def main():
     # Converta para lista para garantir estabilidade na iteração
     ids = dim_filme['id_imdb'].unique().tolist()
+    final_results_data = []
     final_results = []
-
     # Configuração robusta para o cliente
     limits = httpx.Limits(max_connections=50, max_keepalive_connections=20)
+    
     
     # O bloco "async with" deve envolver TODO o processo de espera
     async with httpx.AsyncClient(limits=limits, timeout=None) as client:
@@ -81,35 +101,59 @@ async def main():
                 try:
                     res = await coro
                     if res:
-                        final_results.append(res)
+                        final_results_data.append(res)
                 except Exception as e:
                     pass # Evita que um erro de conexão feche o programa
                 finally:
+                    pbar.update(1) 
+    async with httpx.AsyncClient(limits=limits, timeout=None) as client:
+        tasks = [busca_receita_e_orcamento(client=client, id_certo=id) for id in lista_id_certo]
+        with tqdm(total=len(tasks), desc=f"Buscando Orçamento e Receitas ({len(lista_id_certo)})") as pbar:
+            for coro in asyncio.as_completed(tasks):
+                try:
+                    resp = await coro
+                    if resp:
+                        final_results.append(resp)
+                except Exception as error:
+                    pass 
+                finally:
                     pbar.update(1)
-
+    
+    
     # Finalização
-    if final_results:
-        df_resultados = pd.DataFrame(final_results)
+    if final_results_data:
+        df_resultados = pd.DataFrame(final_results_data)
         print(f"\nSucesso! {len(df_resultados)} filmes encontrados.")
         dim_data= transforma_dim_data(df_resultados)
-        
+        df_resultados_ids = pd.DataFrame(final_results)
+        print(df_resultados_ids)
         dim_data = dim_data.drop_duplicates()
         
         dim_data.to_sql('dim_data', db, if_exists='delete_rows', index=False)
 
-
+        df_resultados_ids.to_sql("tabela_aux_ids_certos",
+                                 con=db,
+                                 if_exists="replace",
+                                 index=False)
         df_aux =pd.DataFrame(lista_ids_datas.items(),columns=(["id_imdb","sk_data"]))
 
         df_aux['sk_data'] = pd.to_datetime(df_aux['sk_data'], errors='coerce')
         df_aux = df_aux.dropna(subset=['sk_data'])
         df_aux['sk_data'] = df_aux['sk_data'].dt.strftime('%Y%m%d').astype(int)
-
         df_aux.to_sql("tabela_aux_datas_ids",
                       con=db,
                       if_exists="replace",
                       index=False)
-        query = "select dim_filme.sk_filme, tabelaId.sk_data, tabela_aux.nota_media, tabela_aux.numero_votos, tabela_aux.tempo_minutos from tabela_aux INNER join dim_filme on tabela_aux.id_imdb = dim_filme.id_imdb INNER JOIN tabela_aux_datas_ids tabelaId on tabela_aux.id_imdb = tabelaId.id_imdb"
+        
+        query = "select dim_filme.sk_filme, dim_filme.id_imdb, tabelaId.sk_data, tabela_aux.nota_media, tabela_aux.numero_votos, tabela_aux.tempo_minutos from tabela_aux INNER join dim_filme on tabela_aux.id_imdb = dim_filme.id_imdb INNER JOIN tabela_aux_datas_ids tabelaId on tabela_aux.id_imdb = tabelaId.id_imdb"
         df_fato_filme = pd.read_sql(query,db)
+        print(df_fato_filme.dtypes)
+        print(df_resultados_ids.dtypes)
+        try:
+            df_fato_filme = df_fato_filme.merge(df_resultados_ids,on="id_imdb",how="inner")
+        except Exception as error:
+            print(error)
+            
         df_fato_filme.to_sql("fato_filme",
                              con=db,
                              if_exists="replace",
